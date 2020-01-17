@@ -80,7 +80,7 @@ geodf$dist.to.prev <- apply(geodf, 1, FUN = function (row) {
 head(geodf$dist.to.prev)
 
 td <- sum(geodf$dist.to.prev, na.rm=TRUE)
-print(paste("The distance run was ", td, " meters"))
+print(paste("The distance walk was ", td, " meters"))
 
 
 # Transform the column ‘time’ so that R knows how to interpret it.
@@ -125,9 +125,53 @@ lon
 
 bbox <- make_bbox(lon,lat)
 
-b2<- get_map(bbox, source="google")
+b1 <- get_stamenmap(bbox, zoom=16, maptype="toner")
 
-ggmap(b2) + geom_point(data = geodf, 
+ggmap(b1) + geom_point(data = geodf, 
                        aes(lon,lat,col = ele), size=1, alpha=0.7) +
   labs(x = "Longitude", y = "Latitude",
-       title="Track of one Sascha run through Stuttgart")
+       title="Track of hike through Bessenbach")
+
+#Create  interaktiv Map
+
+library(mapview)
+
+class(geodf)
+## [1] "data.frame"
+spdf_geo <- geodf
+
+coordinates(spdf_geo) <- ~ lon + lat
+proj4string(spdf_geo) <- "+init=epsg:4326"
+
+class(spdf_geo)
+## [1] "SpatialPointsDataFrame"
+## attr(,"package")
+## [1] "sp"
+mapview(spdf_geo)
+
+#or
+library(leaflet)
+
+leaflet() %>% 
+  addTiles() %>% 
+  addFeatures(spdf_geo, weight = 1, fillColor = "grey", color = "black",
+              opacity = 1, fillOpacity = 0.6)
+
+#################################################
+#3D Map - Rayshader
+
+library(rayshader)
+
+#Here, I load a map with the raster package.
+loadzip = tempfile() 
+download.file("https://tylermw.com/data/dem_01.tif.zip", loadzip)
+localtif = raster::raster(unzip(loadzip, "dem_01.tif"))
+unlink(loadzip)
+
+#And convert it to a matrix:
+elmat = raster_to_matrix(localtif)
+
+#We use another one of rayshader's built-in textures:
+elmat %>%
+  sphere_shade(texture = "desert") %>%
+  plot_map()
